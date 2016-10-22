@@ -56,6 +56,7 @@ public class Sound {
 
     private static final List<String> sFauxLimits = new ArrayList<>();
     private static final List<String> sFrancoLimits = new ArrayList<>();
+    private static final List<String> sShminerLimits = new ArrayList<>();
 
     static {
         sSpeakerGainFiles.add(SPEAKER_GAIN);
@@ -70,16 +71,28 @@ public class Sound {
         for (int i = -20; i < 21; i++) {
             sFrancoLimits.add(String.valueOf(i));
         }
+        for(int i = -10; i<11;i++){
+            sShminerLimits.add(String.valueOf(i));
+        }
     }
 
     private static String SPEAKER_GAIN_FILE;
 
+
     public static void setVolumeGain(String value, Context context) {
-        run(Control.write(value, VOLUME_BOOST), VOLUME_BOOST, context);
+        int newGain = Utils.strToInt(value);
+        if (newGain >= -20 && newGain <= 20) {
+            fauxRun(value + " " + value, VOLUME_BOOST, VOLUME_BOOST, context);
+        }
     }
 
     public static String getVolumeGain() {
-        return Utils.readFile(VOLUME_BOOST);
+        String value = Utils.readFile(VOLUME_BOOST);
+        int gain = Utils.strToInt(value.contains(" ") ? value.split(" ")[0] : value);
+        if (gain >= -20 && gain <= 20) {
+            return String.valueOf(gain);
+        }
+        return "";
     }
 
     public static List<String> getVolumeGainLimits() {
@@ -221,7 +234,7 @@ public class Sound {
             case SPEAKER_GAIN:
                 return sFauxLimits;
             case SPEAKER_BOOST:
-                return sFrancoLimits;
+                return sShminerLimits;
         }
         return new ArrayList<>();
     }

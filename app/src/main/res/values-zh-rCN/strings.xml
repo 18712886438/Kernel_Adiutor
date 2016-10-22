@@ -770,4 +770,7 @@
   <string name="feature_function_summary">如果你不知道这项控制会起什么样的作用，那就先不要碰它。谨记在调校你昂贵的硬件之前做好充分的研究。</string>
   <string name="add_new_features">您可以添加功能 x 和 y 吗？</string>
   <string name="add_new_features_summary">这是很难说的。我试着添加所有功能，但很难使这个应用程序对所有设备普遍支持。</string>
+  <string name="adreno_boost">Adreno加速器</string>
+  <string name="boostLevel">加速档位</string>
+  <string name="boost_summary">滑动下方按钮来控制加速Adreno GPU的档位 0 是关闭, 1 档适用于日常使用, 2 档略激进, 3 档更加激进，请酌情使用</string>
 </resources>

@@ -26,6 +26,7 @@ import com.grarak.kerneladiutor.fragments.RecyclerViewFragment;
 import com.grarak.kerneladiutor.utils.kernel.gpu.AdrenoIdler;
 import com.grarak.kerneladiutor.utils.kernel.gpu.GPUFreq;
 import com.grarak.kerneladiutor.utils.kernel.gpu.SimpleGPU;
+import com.grarak.kerneladiutor.utils.kernel.gpu.AdrenoBoost;
 import com.grarak.kerneladiutor.views.recyclerview.CardView;
 import com.grarak.kerneladiutor.views.recyclerview.DescriptionView;
 import com.grarak.kerneladiutor.views.recyclerview.RecyclerViewItem;
@@ -69,6 +70,9 @@ public class GPUFragment extends RecyclerViewFragment {
         }
         if (AdrenoIdler.supported()) {
             adrenoIdlerInit(items);
+        }
+        if(AdrenoBoost.supported()){
+            adrenoBoostInit(items);
         }
     }
 
@@ -257,6 +261,38 @@ public class GPUFragment extends RecyclerViewFragment {
         if (simpleGpu.size() > 0) {
             items.add(title);
             items.addAll(simpleGpu);
+        }
+    }
+    private void adrenoBoostInit(List<RecyclerViewItem> items){
+        List<RecyclerViewItem> adrenoBoost = new ArrayList<>();
+        TitleView title = new TitleView();
+        title.setText(getString(R.string.adreno_boost));
+
+
+        if (AdrenoBoost.hasAdrenoBoostLevel()) {
+            SeekBarView boostLevel = new SeekBarView();
+            boostLevel.setTitle(getString(R.string.boostLevel));
+            boostLevel.setSummary(getString(R.string.boost_summary));
+            boostLevel.setMax(3);
+            boostLevel.setMin(0);
+            boostLevel.setProgress(AdrenoBoost.getAdrenoBoostLevel());
+            boostLevel.setOnSeekBarListener(new SeekBarView.OnSeekBarListener() {
+                @Override
+                public void onMove(SeekBarView seekBarView, int position, String value) {
+                }
+
+                @Override
+                public void onStop(SeekBarView seekBarView, int position, String value) {
+                    AdrenoBoost.setAdrenoBoostLevel(position, getActivity());
+                }
+            });
+
+            adrenoBoost.add(boostLevel);
+        }
+
+        if (adrenoBoost.size() > 0) {
+            items.add(title);
+            items.addAll(adrenoBoost);
         }
     }
 

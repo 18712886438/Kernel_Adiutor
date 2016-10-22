@@ -860,4 +860,7 @@
     <string name="feature_function_summary">If you don\'t know what this control does, then simply don\'t touch it. Please do a proper research before playing with your expensive hardware.</string>
     <string name="add_new_features">Could you add feature x and y?</string>
     <string name="add_new_features_summary">That\'s hard to say. I try to add all features, but it\'s hard to make this app universal for all devices.</string>
+    <string name="adreno_boost">AdrenoBoost</string>
+    <string name="boostLevel">BoostLevel</string>
+    <string name="boost_summary">a driver to control boostlevel of your andreno gpu to improve the gaming experience. 0 off, 1 smooth,battery,friendly, 2 stronger, 3 aggressive</string>
 </resources>
