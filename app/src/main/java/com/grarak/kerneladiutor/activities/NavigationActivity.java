@@ -21,7 +21,6 @@ package com.grarak.kerneladiutor.activities;
 
 import android.content.DialogInterface;
 import android.content.pm.PackageManager;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.provider.Settings;
@@ -96,7 +95,7 @@ import com.grarak.kerneladiutor.utils.kernel.wake.Wake;
 import com.grarak.kerneladiutor.utils.root.RootUtils;
 import com.grarak.kerneladiutor.utils.tools.Backup;
 import com.grarak.kerneladiutor.utils.tools.SupportedDownloads;
-import com.grarak.kerneladiutor.views.AdBanner;
+import com.grarak.kerneladiutor.views.AdNativeExpress;
 
 import java.util.LinkedHashMap;
 
@@ -193,7 +192,7 @@ public class NavigationActivity extends BaseActivity
 
     @Override
     protected boolean setStatusBarColor() {
-        return Build.VERSION.SDK_INT < Build.VERSION_CODES.M;
+        return false;
     }
 
     @Override
@@ -316,7 +315,7 @@ public class NavigationActivity extends BaseActivity
                 @Override
                 public void onCallback(String raw, CharSequence html) {
                     if (raw == null || raw.isEmpty()) return;
-                    AdBanner.GHAds ghAds = new AdBanner.GHAds(raw);
+                    AdNativeExpress.GHAds ghAds = new AdNativeExpress.GHAds(raw);
                     if (ghAds.readable()) {
                         ghAds.cache(NavigationActivity.this);
                         for (int id : sActualFragments.keySet()) {
@@ -328,7 +327,7 @@ public class NavigationActivity extends BaseActivity
                     }
                 }
             });
-            mAdsFetcher.execute(AdBanner.ADS_FETCH);
+            mAdsFetcher.execute(AdNativeExpress.ADS_FETCH);
         }
     }
 
@@ -372,7 +371,8 @@ public class NavigationActivity extends BaseActivity
         } else {
             if ((sActualFragments.get(mSelection) instanceof BaseFragment
                     && !((BaseFragment) sActualFragments.get(mSelection)).onBackPressed())
-                    || sActualFragments.get(mSelection).getClass() == SettingsFragment.class) {
+                    || (sActualFragments.get(mSelection) != null
+                    && sActualFragments.get(mSelection).getClass() == SettingsFragment.class)) {
                 if (mExit) {
                     mExit = false;
                     super.onBackPressed();

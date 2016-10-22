@@ -81,6 +81,8 @@ public class RootUtils {
     public static void mount(boolean writeable, String mountpoint, SU su) {
         su.runCommand(writeable ? "mount -o remount,rw " + mountpoint + " " + mountpoint :
                 "mount -o remount,ro " + mountpoint + " " + mountpoint);
+        su.runCommand(writeable ? "mount -o remount,rw " + mountpoint :
+                "mount -o remount,ro " + mountpoint);
     }
 
     public static String runScript(String text, String... arguments) {
@@ -116,8 +118,8 @@ public class RootUtils {
     public static class SU {
 
         private Process process;
-        private BufferedWriter bufferedWriter;
-        private BufferedReader bufferedReader;
+        private BufferedWriter mOutputWriter;
+        private BufferedReader mInputReader;
         private final boolean root;
         private final String mTag;
         private boolean closed;
@@ -133,13 +135,13 @@ public class RootUtils {
             mTag = tag;
             try {
                 if (mTag != null) {
-                    Log.i(mTag, root ? "SU initialized" : "SH initialized");
+                    Log.i(mTag, String.format("%s initialized", root ? "SU" : "SH"));
                 }
                 firstTry = true;
                 process = Runtime.getRuntime().exec(root ? "su" : "sh");
-                bufferedWriter = new BufferedWriter(new OutputStreamWriter(process.getOutputStream()));
-                bufferedReader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-            } catch (IOException e) {
+                mOutputWriter = new BufferedWriter(new OutputStreamWriter(process.getOutputStream()));
+                mInputReader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            } catch (IOException ignored) {
                 if (mTag != null) {
                     Log.e(mTag, root ? "Failed to run shell as su" : "Failed to run shell as sh");
                 }
@@ -153,17 +155,15 @@ public class RootUtils {
                 try {
                     StringBuilder sb = new StringBuilder();
                     String callback = "/shellCallback/";
-                    bufferedWriter.write(command + "\necho " + callback + "\n");
-                    bufferedWriter.flush();
+                    mOutputWriter.write(command + "\necho " + callback + "\n");
+                    mOutputWriter.flush();
 
-                    int i;
-                    char[] buffer = new char[256];
-                    while (true) {
-                        sb.append(buffer, 0, bufferedReader.read(buffer));
-                        if ((i = sb.indexOf(callback)) > -1) {
-                            sb.delete(i, i + callback.length());
+                    String line;
+                    while ((line = mInputReader.readLine()) != null) {
+                        if (line.equals(callback)) {
                             break;
                         }
+                        sb.append(line).append("\n");
                     }
                     firstTry = false;
                     if (mTag != null) {
@@ -180,16 +180,20 @@ public class RootUtils {
                     e.printStackTrace();
                     denied = true;
                 }
-                return null;
+                return "";
             }
         }
 
         public void close() {
             try {
-                bufferedWriter.write("exit\n");
-                bufferedWriter.flush();
+                mOutputWriter.write("exit\n");
+                mOutputWriter.flush();
 
                 process.waitFor();
+
+                mOutputWriter.close();
+                mInputReader.close();
+                process.destroy();
                 if (mTag != null) {
                     Log.i(mTag, root ? "SU closed: " + process.exitValue() : "SH closed: "
                             + process.exitValue());

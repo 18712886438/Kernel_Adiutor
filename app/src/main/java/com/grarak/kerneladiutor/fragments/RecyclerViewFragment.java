@@ -36,6 +36,7 @@ import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentPagerAdapter;
+import android.support.v4.app.FragmentTransaction;
 import android.support.v4.view.ViewPager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.StaggeredGridLayoutManager;
@@ -126,6 +127,13 @@ public abstract class RecyclerViewFragment extends BaseFragment {
 
         mRecyclerView = (RecyclerView) mRootView.findViewById(R.id.recyclerview);
 
+        if (mViewPagerFragments != null) {
+            FragmentTransaction fragmentTransaction = getChildFragmentManager().beginTransaction();
+            for (Fragment fragment : mViewPagerFragments) {
+                fragmentTransaction.remove(fragment);
+            }
+            fragmentTransaction.commit();
+        }
         mViewPagerFragments = new ArrayList<>();
         mViewPagerParent = mRootView.findViewById(R.id.viewpagerparent);
         mViewPager = (ViewPager) mRootView.findViewById(R.id.viewpager);
@@ -150,7 +158,14 @@ public abstract class RecyclerViewFragment extends BaseFragment {
                 = new RecyclerViewAdapter(mItems, new RecyclerViewAdapter.OnViewChangedListener() {
             @Override
             public void viewChanged() {
-                adjustScrollPosition();
+                getHandler().postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (isAdded() && getActivity() != null) {
+                            adjustScrollPosition();
+                        }
+                    }
+                }, 250);
             }
         }) : mRecyclerViewAdapter);
         mRecyclerView.setLayoutManager(mLayoutManager = getLayoutManager());
@@ -159,6 +174,7 @@ public abstract class RecyclerViewFragment extends BaseFragment {
                 && !showTopFab()
                 && !isForeground()
                 && getActivity() instanceof NavigationActivity
+                && showAd()
                 && mAdView == null) {
             mAdView = new AdView();
         } else {
@@ -317,7 +333,7 @@ public abstract class RecyclerViewFragment extends BaseFragment {
     }
 
     protected void addItem(RecyclerViewItem recyclerViewItem) {
-        if (mItems.size() == 0 && mAdView != null) {
+        if (mItems.size() == 0 && mAdView != null && !mItems.contains(mAdView)) {
             boolean exists = false;
             for (RecyclerViewItem item : mItems) {
                 if (item instanceof AdView) {
@@ -393,8 +409,8 @@ public abstract class RecyclerViewFragment extends BaseFragment {
             int span = Utils.isTablet(activity) ? Utils.getOrientation(activity) ==
                     Configuration.ORIENTATION_LANDSCAPE ? 3 : 2 : Utils.getOrientation(activity) ==
                     Configuration.ORIENTATION_LANDSCAPE ? 2 : 1;
-            if (mItems.size() != 0 && span > mItems.size()) {
-                span = mItems.size();
+            if (itemsSize() != 0 && span > itemsSize()) {
+                span = itemsSize();
             }
             return span;
         }
@@ -402,7 +418,7 @@ public abstract class RecyclerViewFragment extends BaseFragment {
     }
 
     public int itemsSize() {
-        return mItems.size();
+        return mAdView != null && mItems.contains(mAdView) ? mItems.size() - 1 : mItems.size();
     }
 
     protected void addViewPagerFragment(BaseFragment fragment) {
@@ -728,22 +744,32 @@ public abstract class RecyclerViewFragment extends BaseFragment {
         return false;
     }
 
-    public void ghAdReady() {
-        if (mAdView != null) {
-            mAdView.ghReady();
-        }
-    }
-
     @Override
     public void onResume() {
         super.onResume();
         mHandler.post(mRefresh);
+        for (RecyclerViewItem item : mItems) {
+            item.onResume();
+        }
     }
 
     @Override
     public void onPause() {
         super.onPause();
         mHandler.removeCallbacks(mRefresh);
+        for (RecyclerViewItem item : mItems) {
+            item.onPause();
+        }
+    }
+
+    protected boolean showAd() {
+        return true;
+    }
+
+    public void ghAdReady() {
+        if (mAdView != null) {
+            mAdView.ghReady();
+        }
     }
 
     @Override
