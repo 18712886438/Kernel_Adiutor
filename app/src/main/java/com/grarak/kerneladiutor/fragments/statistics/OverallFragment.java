@@ -43,6 +43,7 @@ import com.grarak.kerneladiutor.fragments.RecyclerViewFragment;
 import com.grarak.kerneladiutor.utils.Utils;
 import com.grarak.kerneladiutor.utils.kernel.cpu.CPUFreq;
 import com.grarak.kerneladiutor.utils.kernel.gpu.GPUFreq;
+import com.grarak.kerneladiutor.utils.root.RootUtils;
 import com.grarak.kerneladiutor.views.XYGraph;
 import com.grarak.kerneladiutor.views.recyclerview.CardView;
 import com.grarak.kerneladiutor.views.recyclerview.DescriptionView;
@@ -146,8 +147,9 @@ public class OverallFragment extends RecyclerViewFragment {
                     cpuStateMonitorLITTLE = mCpuSpyLITTLE.getCpuStateMonitor();
                 }
                 cpuStateMonitor.removeOffsets();
-                if (cpuStateMonitorLITTLE != null)
+                if (cpuStateMonitorLITTLE != null) {
                     cpuStateMonitorLITTLE.removeOffsets();
+                }
                 mCpuSpyBig.saveOffsets(getActivity());
                 if (mCpuSpyLITTLE != null) {
                     mCpuSpyLITTLE.saveOffsets(getActivity());
@@ -283,16 +285,14 @@ public class OverallFragment extends RecyclerViewFragment {
      * @return A nicely formatted String representing tSec seconds
      */
     private String sToString(long tSec) {
-        long h = (long) Math.floor(tSec / (60 * 60));
-        long m = (long) Math.floor((tSec - h * 60 * 60) / 60);
-        long s = tSec % 60;
+        int h = (int) (tSec / (60 * 60));
+        int m = ((int) tSec % (60 * 60)) / 60;
+        int s = ((int) tSec % (60 * 60)) % 60;
         String sDur;
         sDur = h + ":";
-        if (m < 10)
-            sDur += "0";
+        if (m < 10) sDur += "0";
         sDur += m + ":";
-        if (s < 10)
-            sDur += "0";
+        if (s < 10) sDur += "0";
         sDur += s;
 
         return sDur;
@@ -413,8 +413,14 @@ public class OverallFragment extends RecyclerViewFragment {
                             mFreqs = new int[CPUFreq.getCpuCount()];
                         }
                         for (int i = 0; i < mFreqs.length; i++) {
+                            if (getActivity() == null) break;
                             mFreqs[i] = CPUFreq.getCurFreq(i);
                         }
+
+                        if (getActivity() == null) {
+                            RootUtils.closeSU();
+                        }
+
                         mThread = null;
                     }
                 });

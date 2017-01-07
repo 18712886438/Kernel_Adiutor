@@ -8,6 +8,7 @@
   <string name="collecting_info">蒐集資訊中</string>
   <string name="no_root">沒有 Root 權限</string>
   <string name="no_busybox">沒有 Busybox 指令</string>
+  <string name="open">開啟 %s</string>
   <!-- Security -->
   <string name="password">密碼</string>
   <string name="password_wrong">密碼錯誤</string>
@@ -96,6 +97,7 @@
   <!-- Overall -->
   <string name="offline">離線</string>
   <string name="core">核心 %d</string>
+  <string name="gpu_freq">GPU Frequency</string>
   <string name="refresh">重新整理</string>
   <string name="reset">重新設置</string>
   <string name="restore">還原</string>
@@ -139,6 +141,7 @@
   <string name="governor_tunables_summary">The various configuration items which are Governor-dependent.</string>
   <string name="cpu_governor_tunables_read_error">無法讀取目前 CPU 的管理器。\n\n如果您正在使用 QCOM 的 異質運算多核心處理器架構(big.LITTLE)，這是一個已知的問題。系統會強制 CPU 關閉，使得應用程式非常難讀取到 CPU 特定核心並進行狀態統計。請嘗試重新選擇該選項。CPU 有時會傲嬌的拒絕打開一個核心。</string>
   <string name="tunables_error">%s 不可調整</string>
+  <string name="manual">Manual</string>
   <string name="mc_power_saving">多核心省電</string>
   <string name="mc_power_saving_summary">盡可能用最少的核心來分配處理任務</string>
   <string name="disabled">已停用</string>
@@ -160,6 +163,7 @@
   <string name="input_interval">時間間隔(輸入)</string>
   <string name="input_interval_summary">當偵測到輸入時，CPU 被加速的最小時間間隔。</string>
   <string name="input_boost_freq">加速頻率(輸入)</string>
+  <string name="input_boost_freq_core">Input Boost Frequency Core %d</string>
   <string name="input_boost_freq_summary">當偵測到輸入時， CPU 被加速到此頻率。</string>
   <string name="wakeup_boost">Wakeup Boost</string>
   <string name="wakeup_boost_summary">喚醒推動類似輸入刺激但當螢幕打開就會發生。</string>
@@ -256,6 +260,8 @@
   <string name="idle_frequency">閒置頻率</string>
   <string name="idle_frequency_summary">如果第1個核心低於此頻率，不要開啟其他核心。</string>
   <string name="touch_boost_time">加速時間(觸碰)</string>
+  <string name="touch_boost_time_summary">How long the CPU should be boosted after touching the screen.</string>
+  <string name="boost_frequency_core">Boost Frequency Core %d</string>
   <string name="start_delay">啟動延遲</string>
   <string name="start_delay_summary">持續至熱插拔開始運作</string>
   <string name="delay">延遲</string>
@@ -267,12 +273,18 @@
   <string name="sampling_rate">取樣頻率</string>
   <string name="cpu_down_rate">CPU 下降速度</string>
   <string name="cpu_up_rate">CPU 上升速度</string>
+  <string name="thunderplug">ThunderPlug</string>
+  <string name="thunderplug_summary">An in-kernel replacement for Qualcomm\'s hotplugging. Developed by varunchitre15.</string>
+  <string name="min_cpu_online_screen_off">Minimum CPU Screen Off</string>
+  <string name="min_cpu_online_screen_off_summary">Minimum number of CPUs that will be online when the screen is off.</string>
   <string name="endurance_level">續航力等級</string>
   <string name="endurance_level_summary">電源節省計畫</string>
   <string name="quad_core_mode">四核模式</string>
   <string name="dual_core_mode">雙核模式</string>
+  <string name="zen_decision">Zen Decision</string>
   <string name="zen_decision_summary">將高通的 MPDecision 更換為由 Bbedward 開發的內核</string>
   <string name="wake_wait_time">喚醒等待時間</string>
+  <string name="wake_wait_time_summary">How long to wait before turning on any CPUs.</string>
   <string name="bat_threshold_ignore">忽視電池閥值</string>
   <string name="bat_threshold_ignore_summary">當電量低於指定值時不開啟任何核心。</string>
   <string name="autosmp">自動SMP</string>
@@ -280,18 +292,39 @@
   <string name="downrate_limits">降低限制</string>
   <string name="uprate_limits">提高限制</string>
   <string name="cycle_down">迴圈下限</string>
+  <string name="cycle_down_summary">Cycles to wait after the last hotplug event to unplug another core.</string>
   <string name="cycle_up">提升週期</string>
+  <string name="cycle_up_summary">Cycles to wait after the last hotplug event to plug another core.</string>
   <string name="core_control">核心控制</string>
+  <string name="core_control_summary">Qualcomm\'s hotplugging solution. Sorry you can\'t turn it off. #blameqcom</string>
+  <string name="hcube">H-Cube</string>
+  <string name="hcube_summary">OnePlus\' modified Core Control.</string>
+  <string name="min_cpus_big">Minimum CPUs big</string>
+  <string name="min_cpus_big_summary">Minimum amount of big CPUs that should be online.</string>
+  <string name="busy_down_threshold">Busy Down Threshold</string>
+  <string name="busy_down_threshold_summary">Threshold when big CPUs should be turned off.</string>
+  <string name="busy_up_threshold">Busy Up Threshold</string>
+  <string name="busy_up_threshold_summary">Threshold when big CPUs should be turned on.</string>
+  <string name="offline_delay">Offline Delay</string>
+  <string name="offline_delay_summary">Time before turning off a CPU.</string>
   <!--Thermal-->
   <string name="thermal_info">在下面選項中只使用一種溫度管理，同時使用超過一種可能會導致不可預期的行為。</string>
   <string name="thermald">原廠溫度管裡</string>
+  <string name="thermald_summary">Stock thermal driver that prevents device from overheating. This should be disabled if current kernel has an alternative.</string>
+  <string name="intellithermal">Intellithermal</string>
   <string name="intellithermal_summary">將高通的溫度管裡更換為由 faux123 開發的內核</string>
+  <string name="intellithermal_optimized">Intellithermal Optimized</string>
   <string name="intellithermal_optimized_summary">將高通的溫度管裡更換為由 faux123 與 alucard_24 開發的內核</string>
+  <string name="thermal_debug_mask_summary">Allows you to activate debug mask for thermal operations.</string>
   <string name="vdd_restriction">VDD限制</string>
   <string name="freq_throttle_temp">頻率調節溫度</string>
   <string name="freq_throttle_temp_summary">到達此溫度開始調節頻率</string>
+  <string name="cpu_throttle_temp">CPU Throttle Temperature</string>
+  <string name="cpu_throttle_temp_summary">Temperature to start shutting down CPUs.</string>
+  <string name="cpu_temp_hysteresis">CPU Temperature Hysteresis</string>
   <string name="freq_step">頻率設定</string>
   <string name="immediately_limit_stop">立即限制停止</string>
+  <string name="poll">Poll</string>
   <string name="temp_hysteresis">溫度滯後</string>
   <string name="thermal_limit_low">最低溫度限制</string>
   <string name="thermal_limit_high">最高溫度限制</string>
@@ -317,6 +350,7 @@
   <string name="shutdown_temp">關機溫度</string>
   <!-- GPU -->
   <string name="frequencies">頻率</string>
+  <string name="gpu_2d_freq">GPU 2D Frequency</string>
   <string name="gpu_2d_max_freq">GPU 2D 最大頻率</string>
   <string name="gpu_2d_max_freq_summary">設定 GPU 2D可提升的最大頻率</string>
   <string name="gpu_max_freq">GPU 最大頻率</string>
@@ -327,12 +361,23 @@
   <string name="gpu_2d_governor_summary">設定 GPU 的 2D 管理模式。</string>
   <string name="gpu_governor">GPU 管理模式</string>
   <string name="gpu_governor_summary">設定 GPU 的管理模式。</string>
+  <string name="gpu_governor_tunables">GPU Governor Tunables</string>
   <string name="simple_gpu_algorithm">簡單的 GPU 的演算法</string>
   <string name="simple_gpu_algorithm_summary">由 faux123 開發的附加 MSM Adreno TZ GPU 管理模式</string>
   <string name="laziness">Laziness</string>
+  <string name="laziness_summary">This increases the threshold to ramp up or down GPU frequencies. The lower it is, the more performance you get.</string>
+  <string name="ramp_thresold">Ramp Thresold</string>
+  <string name="ramp_thresold_summary">This increases the number of times the GPU governor ramp down requests. The higher it is, the more performance you get.</string>
+  <string name="adreno_idler">Adreno Idler</string>
+  <string name="adreno_idler_summary">An efficient workaround for msm-adreno-tz\'s overheads. Developed by arter97.</string>
+  <string name="down_differential">Down Differential</string>
+  <string name="down_differential_summary">Threshold for determining if the given workload is idle.</string>
   <string name="idle_wait">閒置等待</string>
+  <string name="idle_wait_summary">在緩慢降下頻率前，必須等待數個事件。在閒置等待事件在現在的事件以前，必須全部閒置Adreno管理器才會緩慢下降頻率。這個措施是為了避免在進行遊戲或滑動時，可能會造成的微小Lag。如果你將這個值降低，Adreno管理器將會更頻繁的嘗試降低頻率</string>
   <string name="workload">工作負載</string>
+  <string name="workload_summary">如果將這個值調高，Adreno管理器將會更頻繁的嘗試降低頻率</string>
   <!-- Screen -->
+  <string name="screen_color">螢幕色彩</string>
   <string name="red">紅色</string>
   <string name="green">綠色</string>
   <string name="blue">藍色</string>
@@ -357,20 +402,27 @@
   <string name="blue_positive">藍色積極</string>
   <string name="blue_negative">藍色負</string>
   <string name="lcd_backlight">液晶顯示螢幕背光</string>
+  <string name="gamma_profiles_summary">選擇設定檔後，請將螢幕關閉再打開</string>
   <string name="min_brightness">最小亮度</string>
+  <string name="min_brightness_summary">允許你將LCD螢幕亮度降得比原廠設定的低</string>
   <string name="max_brightness">最大亮度</string>
+  <string name="max_brightness_summary">允許你將LCD螢幕亮度調得比原廠設定還高</string>
   <string name="backlight_dimmer">背光源調光器</string>
   <string name="threshold">門檻值</string>
   <string name="offset">偏移量</string>
+  <string name="negative_toggle_summary">啟用通過按選單按鈕四次即可反相螢幕顏色的功能</string>
   <string name="register_hook">註冊勾點</string>
   <string name="master_sequence">主序列</string>
   <string name="glove_mode">Glove模式</string>
+  <string name="glove_mode_summary">啟用這個可以讓你在戴著手套時使用手機</string>
   <!-- Wake -->
   <string name="dt2w">雙擊螢幕喚醒</string>
   <string name="dt2w_summary">雙擊螢幕來喚醒您的裝置</string>
   <string name="center">中間</string>
+  <string name="full">滿</string>
   <string name="bottom_half">下半部</string>
   <string name="top_half">上半部</string>
+  <string name="half">一半</string>
   <string name="s2w">滑動螢幕喚醒</string>
   <string name="s2w_summary">滑動螢幕來喚醒您的裝置</string>
   <string name="s2s">滑動睡眠</string>
@@ -392,11 +444,16 @@
   <string name="camera_gesture">相機手勢</string>
   <string name="camera_gesture_summary">藉由劃一圈圈於螢幕上來執行預設的相機APP。</string>
   <string name="pocket_mode">口袋模式</string>
+  <string name="timeout">逾時</string>
   <string name="power_key_suspend">電源鍵暫停</string>
   <string name="power_key_suspend_summary">開啟這項目當您按電源鍵關閉螢幕，將會關閉喚醒控制。</string>
+  <string name="area">區域</string>
+  <string name="width">寬度</string>
+  <string name="height">高度</string>
   <string name="vibration_strength">震動強度</string>
   <!-- Sound -->
   <string name="sound_control">聲音控制</string>
+  <string name="headset_highperf_mode">耳機高效能模式</string>
   <string name="headphone_gain">耳機增益</string>
   <string name="handset_microphone_gain">頭戴式麥克風增益</string>
   <string name="speaker_gain">喇叭增益</string>
@@ -410,7 +467,14 @@
   <string name="usb_fast_charge_summary">當裝置連接 USB 時充電速度會較快。變更選項時請重新插入充電器。</string>
   <string name="blx">電池壽命擴展</string>
   <!-- LED -->
+  <string name="speed">速度</string>
+  <string name="notification">通知</string>
+  <string name="on">開</string>
+  <string name="off">關</string>
+  <string name="fade_in">漸進</string>
+  <string name="fade_out">漸出</string>
   <string name="test">測試</string>
+  <string name="led_test_summary">使用目前的設定測試LED</string>
   <!-- I/O Scheduler -->
   <string name="internal_storage">內部儲存空間</string>
   <string name="external_storage">外部儲存空間</string>
@@ -420,6 +484,7 @@
   <string name="read_ahead">預讀</string>
   <!-- Kernel Samepage Merging -->
   <string name="full_scans">完整掃描</string>
+  <string name="max_cpu_usage">最大CPU使用量</string>
   <!-- Low Memory Killer -->
   <string name="foreground_app">前臺應用程式</string>
   <string name="visible_app">可見的應用程式</string>
@@ -446,16 +511,30 @@
   <string name="tcp">TCP 擁塞控制演算法</string>
   <string name="tcp_summary">擁塞控制是一種用來調整傳輸控制協議（TCP/IP）連接單次發送的分組數量的算法。它通過增減單次發送量逐步調整，使之逼近當前網絡的承載量。</string>
   <string name="hostname">主機名稱</string>
+  <!-- Data Sharing -->
   <!-- Custom Controls -->
   <string name="welcome">歡迎</string>
   <string name="create">新增</string>
+  <string name="import_item">匯入</string>
   <string name="control_switch">開關</string>
   <string name="control_seekbar">搜尋欄</string>
   <string name="title">標題</string>
+  <string name="description">描述</string>
   <string name="applying">套用中</string>
+  <string name="switch_enabled_summary">判斷開關是否啟用。傳回1代表啟用。傳回0代表停用</string>
+  <string name="seekbar_min">最小</string>
+  <string name="seekbar_max">最大</string>
+  <string name="seekbar_progress">進度</string>
+  <string name="generic_value">數值</string>
+  <string name="output">輸出</string>
   <string name="edit">編輯</string>
+  <string name="export">匯出</string>
   <string name="delete">刪除</string>
+  <string name="sure_question">你確定？</string>
   <string name="name">名稱</string>
+  <string name="already_exists">%s 已經存在！</string>
+  <string name="name_empty">名字不能為空白！</string>
+  <string name="import_wrong_version">匯入的檔案版本太舊了！</string>
   <!-- Downloads -->
   <string name="downloading_counting">%1$s/%2$s</string>
   <string name="install">安装</string>
@@ -468,9 +547,14 @@
   <string name="restoring">還原中</string>
   <!-- Backup -->
   <!-- Build prop Editor -->
+  <string name="key">密碼</string>
   <string name="value">值</string>
+  <string name="key_empty">密碼不能為空白！</string>
   <!-- Profile -->
+  <string name="no_changes">沒有任何更改作用！</string>
+  <string name="apply_question">套用%s?</string>
   <string name="applied">套用成功</string>
+  <string name="applying_profile">套用%s中！</string>
   <!-- Recovery -->
   <string name="wipe_data">Wipe Data</string>
   <string name="wipe_cache">Wipe Cache</string>
@@ -483,7 +567,14 @@
   <string name="fahrenheit_summary">使用華氏溫度測量。</string>
   <string name="force_english">強制使用英文</string>
   <string name="dark_theme">深色主題</string>
+  <string name="instant">立即</string>
+  <string name="five_sec">5 秒</string>
   <string name="ten_sec">10秒</string>
+  <string name="twenty_sec">20 秒</string>
+  <string name="fifty_sec">50 秒</string>
+  <string name="hide">隱藏</string>
+  <string name="toast">彈出訊息（Toast）</string>
+  <string name="script">腳本</string>
   <string name="debugging">除錯</string>
   <string name="logcat">Logcat</string>
   <string name="logcat_summary">將 logcat 複製到 /sdcard/logcat.txt</string>

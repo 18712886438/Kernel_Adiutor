@@ -62,6 +62,9 @@ import com.grarak.kerneladiutor.utils.kernel.wake.Wake;
 import com.grarak.kerneladiutor.utils.root.RootUtils;
 
 import java.io.File;
+import java.io.IOException;
+import java.net.HttpURLConnection;
+import java.net.URL;
 
 import io.fabric.sdk.android.Fabric;
 
@@ -73,14 +76,16 @@ public class MainActivity extends BaseActivity {
     private TextView mRootAccess;
     private TextView mBusybox;
     private TextView mCollectInfo;
-    private boolean mExecuting;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // Don't initialize analytics with debug build
         if (!BuildConfig.DEBUG) {
             Fabric.with(this, new Crashlytics());
         }
+
         setContentView(R.layout.activity_main);
 
         View splashBackground = findViewById(R.id.splash_background);
@@ -88,54 +93,84 @@ public class MainActivity extends BaseActivity {
         mBusybox = (TextView) findViewById(R.id.busybox_text);
         mCollectInfo = (TextView) findViewById(R.id.info_collect_text);
 
+        // Hide huge banner in landscape mode
         if (Utils.getOrientation(this) == Configuration.ORIENTATION_LANDSCAPE) {
             splashBackground.setVisibility(View.GONE);
         }
 
         if (savedInstanceState == null) {
+            /**
+             * Launch password activity when one is set,
+             * otherwise run {@link CheckingTask}
+             */
             String password;
             if (!(password = Prefs.getString("password", "", this)).isEmpty()) {
                 Intent intent = new Intent(this, SecurityActivity.class);
                 intent.putExtra(SecurityActivity.PASSWORD_INTENT, password);
                 startActivityForResult(intent, 1);
             } else {
-                execute();
+                new CheckingTask().execute();
             }
-        } else {
-            mExecuting = savedInstanceState.getBoolean("executing");
         }
-    }
-
-    private void execute() {
-        if (!mExecuting) {
-            new CheckingTask().execute();
-        }
-    }
-
-    @Override
-    protected void onSaveInstanceState(Bundle outState) {
-        super.onSaveInstanceState(outState);
-        outState.putBoolean("executing", mExecuting);
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+
+        /*
+         * 0: License check result
+         * 1: Password check result
+         */
         if (requestCode == 0) {
-            launch(data == null ? -1 : data.getIntExtra("result", -1));
+
+            /*
+             * -1: Default (no license check executed)
+             *  0: License check was successful
+             *  1: Something went wrong when checking license
+             *  2: License is invalid
+             *  3: Donate apk is patched/cracked
+             */
+            int result = data == null ? -1 : data.getIntExtra("result", -1);
+            if (result == 0) {
+                try {
+                    ApplicationInfo applicationInfo = getPackageManager().getApplicationInfo(
+                            "com.grarak.kerneladiutordonate", 0);
+                    Utils.writeFile(applicationInfo.dataDir + "/license",
+                            Utils.encodeString(Utils.getAndroidId(this)), false, true);
+                } catch (PackageManager.NameNotFoundException ignored) {
+                }
+            }
+            launch(result);
+
         } else if (requestCode == 1) {
+
+            /*
+             * 0: Password is wrong
+             * 1: Password is correct
+             */
             if (resultCode == 1) {
-                execute();
+                new CheckingTask().execute();
             } else {
                 finish();
             }
+
         }
     }
 
+    /**
+     * Launch {@link NavigationActivity} which is the actual interface
+     *
+     * @param code license check result see {@link #onActivityResult(int, int, Intent)}
+     */
     private void launch(int code) {
         Intent intent = new Intent(this, NavigationActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         intent.putExtra("result", code);
+        Bundle bundle = getIntent().getExtras();
+        if (bundle != null) {
+            intent.putExtras(bundle);
+        }
         Prefs.saveInt("license", code, this);
         startActivity(intent);
         finish();
@@ -147,19 +182,20 @@ public class MainActivity extends BaseActivity {
         private boolean mHasBusybox;
 
         @Override
-        protected void onPreExecute() {
-            super.onPreExecute();
-            mExecuting = true;
-        }
-
-        @Override
         protected Void doInBackground(Void... params) {
+            // Check for root access
             mHasRoot = RootUtils.rootAccess();
             publishProgress(0);
+
+            // If root is available continue
             if (mHasRoot) {
+                // Check for busybox/toybox
                 mHasBusybox = RootUtils.busyboxInstalled();
                 publishProgress(1);
+
+                // If busybox/toybox is available continue
                 if (mHasBusybox) {
+                    // Collect information for caching
                     collectData();
                     publishProgress(2);
                 }
@@ -167,12 +203,16 @@ public class MainActivity extends BaseActivity {
             return null;
         }
 
-        // For caching
+        /**
+         * Determinate what sections are supported
+         */
         private void collectData() {
             Battery.supported(MainActivity.this);
             CPUBoost.supported();
-            CPUFreq.sCoreCtlMinCpu = Prefs.getInt("core_ctl_min_cpus_big",
-                    CPUFreq.getCpuCount() == 6 ? 2 : 0, MainActivity.this);
+
+            // Assign core ctl min cpu
+            CPUFreq.sCoreCtlMinCpu = Prefs.getInt("core_ctl_min_cpus_big", 2, MainActivity.this);
+
             Device.CPUInfo.load();
             Device.Input.supported();
             Device.MemInfo.load();
@@ -194,11 +234,20 @@ public class MainActivity extends BaseActivity {
             Wake.supported();
 
             if (!BuildConfig.DEBUG) {
+                // Send SoC type to analytics to collect stats
                 Answers.getInstance().logCustom(new CustomEvent("SoC")
                         .putCustomAttribute("type", Device.getBoard()));
             }
         }
 
+        /**
+         * Let the user know what we are doing right now
+         *
+         * @param values progress
+         *               0: Checking root
+         *               1: Checking busybox/toybox
+         *               2: Collecting information
+         */
         @Override
         protected void onProgressUpdate(Integer... values) {
             super.onProgressUpdate(values);
@@ -221,6 +270,11 @@ public class MainActivity extends BaseActivity {
         protected void onPostExecute(Void aVoid) {
             super.onPostExecute(aVoid);
 
+            /*
+             * If root or busybox/toybox are not available,
+             * launch text activity which let the user know
+             * what the problem is.
+             */
             if (!mHasRoot || !mHasBusybox) {
                 Intent intent = new Intent(MainActivity.this, TextActivity.class);
                 intent.putExtra(TextActivity.MESSAGE_INTENT, getString(mHasRoot ?
@@ -233,19 +287,24 @@ public class MainActivity extends BaseActivity {
                 finish();
 
                 if (!BuildConfig.DEBUG) {
+                    // Send problem to analytics to collect stats
                     Answers.getInstance().logCustom(new CustomEvent("Can't access")
                             .putCustomAttribute("no_found", mHasRoot ? "no busybox" : "no root"));
                 }
                 return;
             }
 
+            // Initialize Google Ads
             MobileAds.initialize(MainActivity.this, "ca-app-pub-1851546461606210~9501142287");
+
+            // Execute another AsyncTask for license checking
             new AsyncTask<Void, Void, Boolean>() {
 
                 private ApplicationInfo mApplicationInfo;
                 private PackageInfo mPackageInfo;
                 private boolean mPatched;
                 private boolean mInternetAvailable;
+                private boolean mLicensedCached;
 
                 @Override
                 protected void onPreExecute() {
@@ -255,42 +314,70 @@ public class MainActivity extends BaseActivity {
                                 "com.grarak.kerneladiutordonate", 0);
                         mPackageInfo = getPackageManager().getPackageInfo(
                                 "com.grarak.kerneladiutordonate", 0);
+                        if (BuildConfig.DEBUG) {
+                            Utils.DONATED = false;
+                        }
                     } catch (PackageManager.NameNotFoundException ignored) {
                     }
                 }
 
                 @Override
                 protected Boolean doInBackground(Void... params) {
-                    if (mApplicationInfo != null && mPackageInfo != null && mPackageInfo.versionCode == 130) {
-                        mPatched = !Utils.checkMD5("5c7a92a5b2dcec409035e1114e815b00",
-                                new File(mApplicationInfo.publicSourceDir));
-
+                    if (mApplicationInfo != null && mPackageInfo != null
+                            && mPackageInfo.versionCode == 130) {
                         try {
-                            mInternetAvailable =
-                                    Runtime.getRuntime().exec("ping -W 5 -c 1 8.8.8.8").waitFor() == 0;
+                            mPatched = !Utils.checkMD5("5c7a92a5b2dcec409035e1114e815b00",
+                                    new File(mApplicationInfo.publicSourceDir))
+                                    || Utils.isPatched(mApplicationInfo);
                         } catch (Exception e) {
                             e.printStackTrace();
                         }
+
+                        if (Utils.existFile(mApplicationInfo.dataDir + "/license")) {
+                            String content = Utils.readFile(mApplicationInfo.dataDir + "/license");
+                            if (!content.isEmpty() && (content = Utils.decodeString(content)) != null) {
+                                if (content.equals(Utils.getAndroidId(MainActivity.this))) {
+                                    mLicensedCached = true;
+                                }
+                            }
+                        }
+
+                        try {
+                            if (!mLicensedCached) {
+                                HttpURLConnection urlConnection = (HttpURLConnection) new URL("https://www.google.com").openConnection();
+                                urlConnection.setRequestProperty("User-Agent", "Test");
+                                urlConnection.setRequestProperty("Connection", "close");
+                                urlConnection.setConnectTimeout(3000);
+                                urlConnection.connect();
+                                mInternetAvailable = urlConnection.getResponseCode() == HttpURLConnection.HTTP_OK;
+                            }
+                        } catch (IOException ignored) {
+                        }
+
+                        return !mPatched;
                     }
-                    return mApplicationInfo != null && mPackageInfo != null && mPackageInfo.versionCode == 130
-                            && !mPatched;
+                    return false;
                 }
 
                 @Override
-                protected void onPostExecute(Boolean aBoolean) {
-                    super.onPostExecute(aBoolean);
-                    if (aBoolean && mInternetAvailable) {
+                protected void onPostExecute(Boolean donationValid) {
+                    super.onPostExecute(donationValid);
+                    if (donationValid && mLicensedCached) {
+                        launch(0);
+                    } else if (donationValid && mInternetAvailable) {
                         Intent intent = new Intent(Intent.ACTION_MAIN);
                         intent.setComponent(new ComponentName("com.grarak.kerneladiutordonate",
                                 "com.grarak.kerneladiutordonate.MainActivity"));
                         startActivityForResult(intent, 0);
-                    } else if (mApplicationInfo != null && mPackageInfo != null
-                            && !mInternetAvailable && !mPatched) {
-                        launch(0);
+                    } else if (donationValid) {
+                        launch(1);
                     } else {
+                        if (mPatched && !BuildConfig.DEBUG) {
+                            Answers.getInstance().logCustom(new CustomEvent("Pirated")
+                                    .putCustomAttribute("android_id", Utils.getAndroidId(MainActivity.this)));
+                        }
                         launch(mPatched ? 3 : -1);
                     }
-                    mExecuting = false;
                 }
             }.execute();
         }

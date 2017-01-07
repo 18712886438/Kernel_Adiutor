@@ -1,6 +1,26 @@
+/*
+ * Copyright (C) 2015-2016 Willi Ye <williye97@gmail.com>
+ *
+ * This file is part of Kernel Adiutor.
+ *
+ * Kernel Adiutor is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Kernel Adiutor is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Kernel Adiutor.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
 package com.grarak.kerneladiutor.fragments.other;
 
 import android.app.ProgressDialog;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.res.Resources;
@@ -10,9 +30,9 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.os.Messenger;
+import android.support.v4.app.Fragment;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.hardware.fingerprint.FingerprintManagerCompat;
-import android.support.v7.app.AlertDialog;
 import android.support.v7.preference.Preference;
 import android.support.v7.preference.PreferenceCategory;
 import android.support.v7.preference.PreferenceFragmentCompat;
@@ -36,6 +56,7 @@ import com.grarak.kerneladiutor.utils.Utils;
 import com.grarak.kerneladiutor.utils.ViewUtils;
 import com.grarak.kerneladiutor.utils.root.RootUtils;
 import com.grarak.kerneladiutor.views.BorderCircleView;
+import com.grarak.kerneladiutor.views.dialog.Dialog;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -54,8 +75,8 @@ public class SettingsFragment extends PreferenceFragmentCompat implements
     private static final String KEY_MATERIAL_ICON = "materialicon";
     private static final String KEY_BANNER_RESIZER = "banner_resizer";
     private static final String KEY_HIDE_BANNER = "hide_banner";
-    private static final String KEY_FORCE_CARDS = "forcecards";
     private static final String KEY_ACCENT_COLOR = "accent_color";
+    private static final String KEY_SECTIONS_ICON = "section_icons";
     private static final String KEY_APPLY_ON_BOOT_TEST = "applyonboottest";
     private static final String KEY_DEBUGGING_CATEGORY = "debugging_category";
     private static final String KEY_LOGCAT = "logcat";
@@ -79,7 +100,9 @@ public class SettingsFragment extends PreferenceFragmentCompat implements
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         if (!Utils.DONATED) {
-            Prefs.saveBoolean(KEY_FORCE_CARDS, false, getActivity());
+            Prefs.remove(KEY_HIDE_BANNER, getActivity());
+            Prefs.remove(KEY_ACCENT_COLOR, getActivity());
+            Prefs.remove(KEY_SECTIONS_ICON, getActivity());
         }
         setRetainInstance(true);
     }
@@ -142,8 +165,8 @@ public class SettingsFragment extends PreferenceFragmentCompat implements
         findPreference(KEY_DARK_THEME).setOnPreferenceChangeListener(this);
         findPreference(KEY_BANNER_RESIZER).setOnPreferenceClickListener(this);
         findPreference(KEY_HIDE_BANNER).setOnPreferenceChangeListener(this);
-        findPreference(KEY_FORCE_CARDS).setOnPreferenceChangeListener(this);
         findPreference(KEY_ACCENT_COLOR).setOnPreferenceClickListener(this);
+        findPreference(KEY_SECTIONS_ICON).setOnPreferenceChangeListener(this);
         findPreference(KEY_APPLY_ON_BOOT_TEST).setOnPreferenceClickListener(this);
         findPreference(KEY_LOGCAT).setOnPreferenceClickListener(this);
 
@@ -168,16 +191,17 @@ public class SettingsFragment extends PreferenceFragmentCompat implements
         }
 
         PreferenceCategory sectionsCategory = (PreferenceCategory) findPreference(KEY_SECTIONS);
-        for (int id : NavigationActivity.sFragments.keySet()) {
-            if (NavigationActivity.sFragments.get(id) != null
-                    && NavigationActivity.sFragments.get(id).getClass() != SettingsFragment.class) {
+        for (NavigationActivity.NavigationFragment navigationFragment : NavigationActivity.sFragments) {
+            Fragment fragment = navigationFragment.mFragment;
+            int id = navigationFragment.mId;
+
+            if (fragment != null && fragment.getClass() != SettingsFragment.class) {
                 SwitchPreferenceCompat switchPreference = new SwitchPreferenceCompat(
                         new ContextThemeWrapper(getActivity(), R.style.Preference_SwitchPreferenceCompat_Material));
                 switchPreference.setSummary(getString(id));
-                switchPreference.setKey(NavigationActivity.sFragments.get(id).getClass()
-                        .getSimpleName() + "_enabled");
-                switchPreference.setChecked(Prefs.getBoolean(NavigationActivity.sFragments.get(id).getClass()
-                        .getSimpleName() + "_enabled", true, getActivity()));
+                switchPreference.setKey(fragment.getClass().getSimpleName() + "_enabled");
+                switchPreference.setChecked(Prefs.getBoolean(fragment.getClass().getSimpleName()
+                        + "_enabled", true, getActivity()));
                 switchPreference.setOnPreferenceChangeListener(this);
                 switchPreference.setPersistent(false);
                 sectionsCategory.addPreference(switchPreference);
@@ -204,14 +228,17 @@ public class SettingsFragment extends PreferenceFragmentCompat implements
                 Utils.setStartActivity(checked, getActivity());
                 return true;
             case KEY_HIDE_BANNER:
-            case KEY_FORCE_CARDS:
                 if (!Utils.DONATED) {
                     ViewUtils.dialogDonate(getActivity()).show();
                     return false;
                 }
                 return true;
             default:
-                if (key.endsWith("_enabled")) {
+                if (key.equals(KEY_SECTIONS_ICON) || key.endsWith("_enabled")) {
+                    if (key.equals(KEY_SECTIONS_ICON) && !Utils.DONATED) {
+                        ViewUtils.dialogDonate(getActivity()).show();
+                        return false;
+                    }
                     Prefs.saveBoolean(key, checked, getActivity());
                     ((NavigationActivity) getActivity()).appendFragments();
                     return true;
@@ -219,6 +246,23 @@ public class SettingsFragment extends PreferenceFragmentCompat implements
                 break;
         }
         return false;
+    }
+
+    private static class MessengerHandler extends Handler {
+
+        private final Context mContext;
+
+        private MessengerHandler(Context context) {
+            mContext = context;
+        }
+
+        @Override
+        public void handleMessage(Message msg) {
+            super.handleMessage(msg);
+            if (msg.arg1 == 1 && mContext != null) {
+                Utils.toast(R.string.nothing_apply, mContext);
+            }
+        }
     }
 
     @Override
@@ -253,15 +297,7 @@ public class SettingsFragment extends PreferenceFragmentCompat implements
                     Utils.toast(R.string.apply_on_boot_running, getActivity());
                 } else {
                     Intent intent = new Intent(getActivity(), Service.class);
-                    intent.putExtra("messenger", new Messenger(new Handler() {
-                        @Override
-                        public void handleMessage(Message msg) {
-                            super.handleMessage(msg);
-                            if (msg.arg1 == 1) {
-                                Utils.toast(R.string.nothing_apply, getActivity());
-                            }
-                        }
-                    }));
+                    intent.putExtra("messenger", new Messenger(new MessengerHandler(getActivity())));
                     getActivity().startService(intent);
                 }
                 return true;
@@ -341,7 +377,7 @@ public class SettingsFragment extends PreferenceFragmentCompat implements
         confirmNewPassword.setHint(getString(R.string.confirm_new_password));
         linearLayout.addView(confirmNewPassword);
 
-        new AlertDialog.Builder(getActivity()).setView(linearLayout)
+        new Dialog(getActivity()).setView(linearLayout)
                 .setNegativeButton(getString(R.string.cancel), new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialogInterface, int i) {
@@ -405,7 +441,7 @@ public class SettingsFragment extends PreferenceFragmentCompat implements
         mPassword.setHint(getString(R.string.password));
         linearLayout.addView(mPassword);
 
-        new AlertDialog.Builder(getActivity()).setView(linearLayout)
+        new Dialog(getActivity()).setView(linearLayout)
                 .setPositiveButton(getString(R.string.ok), new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialogInterface, int i) {
@@ -473,7 +509,7 @@ public class SettingsFragment extends PreferenceFragmentCompat implements
             subView.addView(circle);
         }
 
-        new AlertDialog.Builder(getActivity()).setView(linearLayout)
+        new Dialog(getActivity()).setView(linearLayout)
                 .setNegativeButton(getString(R.string.cancel), new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {

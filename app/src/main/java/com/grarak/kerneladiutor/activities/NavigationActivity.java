@@ -20,10 +20,16 @@
 package com.grarak.kerneladiutor.activities;
 
 import android.content.DialogInterface;
-import android.content.pm.PackageManager;
+import android.content.Intent;
+import android.content.pm.ShortcutInfo;
+import android.content.pm.ShortcutManager;
+import android.graphics.drawable.Drawable;
+import android.graphics.drawable.Icon;
+import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
-import android.provider.Settings;
+import android.support.annotation.NonNull;
 import android.support.design.widget.NavigationView;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentTransaction;
@@ -37,9 +43,6 @@ import android.view.MenuItem;
 import android.view.SubMenu;
 import android.view.View;
 
-import com.crashlytics.android.answers.Answers;
-import com.crashlytics.android.answers.CustomEvent;
-import com.grarak.kerneladiutor.BuildConfig;
 import com.grarak.kerneladiutor.R;
 import com.grarak.kerneladiutor.fragments.BaseFragment;
 import com.grarak.kerneladiutor.fragments.RecyclerViewFragment;
@@ -69,12 +72,14 @@ import com.grarak.kerneladiutor.fragments.statistics.MemoryFragment;
 import com.grarak.kerneladiutor.fragments.statistics.OverallFragment;
 import com.grarak.kerneladiutor.fragments.tools.BackupFragment;
 import com.grarak.kerneladiutor.fragments.tools.BuildpropFragment;
+import com.grarak.kerneladiutor.fragments.tools.DataSharingFragment;
 import com.grarak.kerneladiutor.fragments.tools.InitdFragment;
 import com.grarak.kerneladiutor.fragments.tools.OnBootFragment;
 import com.grarak.kerneladiutor.fragments.tools.ProfileFragment;
 import com.grarak.kerneladiutor.fragments.tools.RecoveryFragment;
 import com.grarak.kerneladiutor.fragments.tools.customcontrols.CustomControlsFragment;
 import com.grarak.kerneladiutor.fragments.tools.downloads.DownloadsFragment;
+import com.grarak.kerneladiutor.services.monitor.Monitor;
 import com.grarak.kerneladiutor.utils.Device;
 import com.grarak.kerneladiutor.utils.Prefs;
 import com.grarak.kerneladiutor.utils.Utils;
@@ -97,82 +102,18 @@ import com.grarak.kerneladiutor.utils.tools.Backup;
 import com.grarak.kerneladiutor.utils.tools.SupportedDownloads;
 import com.grarak.kerneladiutor.views.AdNativeExpress;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 public class NavigationActivity extends BaseActivity
         implements NavigationView.OnNavigationItemSelectedListener {
 
-    public final static LinkedHashMap<Integer, Fragment> sFragments = new LinkedHashMap<>();
+    public final static List<NavigationFragment> sFragments = new ArrayList<>();
     public final static LinkedHashMap<Integer, Fragment> sActualFragments = new LinkedHashMap<>();
 
-    static {
-        sFragments.put(R.string.statistics, null);
-        sFragments.put(R.string.overall, new OverallFragment());
-        sFragments.put(R.string.device, new DeviceFragment());
-        if (Device.MemInfo.getItems().size() > 0) {
-            sFragments.put(R.string.memory, new MemoryFragment());
-        }
-        sFragments.put(R.string.inputs, new InputsFragment());
-        sFragments.put(R.string.kernel, null);
-        sFragments.put(R.string.cpu, new CPUFragment());
-        if (Voltage.supported()) {
-            sFragments.put(R.string.cpu_voltage, new CPUVoltageFragment());
-        }
-        if (Hotplug.supported()) {
-            sFragments.put(R.string.cpu_hotplug, new CPUHotplugFragment());
-        }
-        if (Thermal.supported()) {
-            sFragments.put(R.string.thermal, new ThermalFragment());
-        }
-        if (GPU.supported()) {
-            sFragments.put(R.string.gpu, new GPUFragment());
-        }
-        if (Screen.supported()) {
-            sFragments.put(R.string.screen, new ScreenFragment());
-        }
-        if (Wake.supported()) {
-            sFragments.put(R.string.wake, new WakeFrament());
-        }
-        if (Sound.supported()) {
-            sFragments.put(R.string.sound, new SoundFragment());
-        }
-        sFragments.put(R.string.battery, new BatteryFragment());
-        if (LED.supported()) {
-            sFragments.put(R.string.led, new LEDFragment());
-        }
-        if (IO.supported()) {
-            sFragments.put(R.string.io_scheduler, new IOFragment());
-        }
-        if (KSM.supported()) {
-            sFragments.put(R.string.ksm, new KSMFragment());
-        }
-        if (LMK.supported()) {
-            sFragments.put(R.string.lmk, new LMKFragment());
-        }
-        sFragments.put(R.string.virtual_memory, new VMFragment());
-        if (Entropy.supported()) {
-            sFragments.put(R.string.entropy, new EntropyFragment());
-        }
-        sFragments.put(R.string.misc, new MiscFragment());
-        sFragments.put(R.string.tools, null);
-        sFragments.put(R.string.custom_controls, new CustomControlsFragment());
-        sFragments.put(R.string.downloads, null);
-        if (Backup.hasBackup()) {
-            sFragments.put(R.string.backup, new BackupFragment());
-        }
-        sFragments.put(R.string.build_prop_editor, new BuildpropFragment());
-        sFragments.put(R.string.profile, new ProfileFragment());
-        sFragments.put(R.string.recovery, new RecoveryFragment());
-        sFragments.put(R.string.initd, new InitdFragment());
-        sFragments.put(R.string.on_boot, new OnBootFragment());
-        sFragments.put(R.string.other, null);
-        sFragments.put(R.string.settings, new SettingsFragment());
-        sFragments.put(R.string.about, new AboutFragment());
-        sFragments.put(R.string.contributors, new ContributorsFragment());
-        sFragments.put(R.string.help, new HelpFragment());
-    }
-
-    private static Thread mPatchingThread;
     private static Callback sCallback;
 
     private interface Callback {
@@ -196,65 +137,117 @@ public class NavigationActivity extends BaseActivity
     }
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    protected void onCreate(final Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        sCallback = new Callback() {
-            @Override
-            public void onBannerResize() {
-                Fragment fragment = sActualFragments.get(mSelection);
-                if (fragment instanceof RecyclerViewFragment) {
-                    ((RecyclerViewFragment) fragment).resizeBanner();
-                }
-            }
-        };
-        setContentView(R.layout.activity_navigation);
-        Toolbar toolbar = getToolBar();
-        setSupportActionBar(toolbar);
 
-        SupportedDownloads support = new SupportedDownloads(this);
-        if (support.getLink() != null) {
-            sFragments.put(R.string.downloads, DownloadsFragment.newInstance(support));
+        if (sFragments.size() <= 0) {
+            new AsyncTask<Void, Void, Void>() {
+                @Override
+                protected Void doInBackground(Void... voids) {
+                    initFragments();
+                    return null;
+                }
+
+                @Override
+                protected void onPostExecute(Void aVoid) {
+                    super.onPostExecute(aVoid);
+
+                    for (NavigationActivity.NavigationFragment fragment : sFragments) {
+                        if (fragment.mId == R.string.downloads) {
+                            fragment.mFragment = new SettingsFragment();
+                            fragment.mDrawable = R.drawable.ic_download;
+                        }
+                    }
+
+                    init(savedInstanceState);
+                }
+            }.execute();
         } else {
-            sFragments.remove(R.string.downloads);
+            init(savedInstanceState);
         }
+    }
 
-        mDrawer = (DrawerLayout) findViewById(R.id.drawer_layout);
-        ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(this, mDrawer, toolbar, 0, 0);
-        mDrawer.addDrawerListener(toggle);
-        toggle.syncState();
-
-        mNavigationView = (NavigationView) findViewById(R.id.nav_view);
-        mNavigationView.setNavigationItemSelectedListener(this);
-        mNavigationView.setOnFocusChangeListener(new View.OnFocusChangeListener() {
-            @Override
-            public void onFocusChange(View v, boolean hasFocus) {
-                if (hasFocus) {
-                    v.clearFocus();
-                }
-            }
-        });
-        appendFragments();
-
-        if (savedInstanceState != null) {
-            mSelection = savedInstanceState.getInt("selection");
-            mLicenseDialog = savedInstanceState.getBoolean("license");
-            mFetchingAds = savedInstanceState.getBoolean("fetching_ads");
+    private void initFragments() {
+        sFragments.add(new NavigationActivity.NavigationFragment(R.string.statistics));
+        sFragments.add(new NavigationActivity.NavigationFragment(R.string.overall, new OverallFragment(), R.drawable.ic_chart));
+        sFragments.add(new NavigationActivity.NavigationFragment(R.string.device, new DeviceFragment(), R.drawable.ic_device));
+        if (Device.MemInfo.getItems().size() > 0) {
+            sFragments.add(new NavigationActivity.NavigationFragment(R.string.memory, new MemoryFragment(), R.drawable.ic_save));
         }
-
-        if (mSelection == 0 || !sActualFragments.containsKey(mSelection)) {
-            mSelection = firstTab();
+        sFragments.add(new NavigationActivity.NavigationFragment(R.string.inputs, new InputsFragment(), R.drawable.ic_keyboard));
+        sFragments.add(new NavigationActivity.NavigationFragment(R.string.kernel));
+        sFragments.add(new NavigationActivity.NavigationFragment(R.string.cpu, new CPUFragment(), R.drawable.ic_cpu));
+        if (Voltage.supported()) {
+            sFragments.add(new NavigationActivity.NavigationFragment(R.string.cpu_voltage, new CPUVoltageFragment(), R.drawable.ic_bolt));
         }
-        onItemSelected(mSelection, false);
+        if (Hotplug.supported()) {
+            sFragments.add(new NavigationActivity.NavigationFragment(R.string.cpu_hotplug, new CPUHotplugFragment(), R.drawable.ic_switch));
+        }
+        if (Thermal.supported()) {
+            sFragments.add(new NavigationActivity.NavigationFragment(R.string.thermal, new ThermalFragment(), R.drawable.ic_temperature));
+        }
+        if (GPU.supported()) {
+            sFragments.add(new NavigationActivity.NavigationFragment(R.string.gpu, new GPUFragment(), R.drawable.ic_gpu));
+        }
+        if (Screen.supported()) {
+            sFragments.add(new NavigationActivity.NavigationFragment(R.string.screen, new ScreenFragment(), R.drawable.ic_display));
+        }
+        if (Wake.supported()) {
+            sFragments.add(new NavigationActivity.NavigationFragment(R.string.wake, new WakeFrament(), R.drawable.ic_unlock));
+        }
+        if (Sound.supported()) {
+            sFragments.add(new NavigationActivity.NavigationFragment(R.string.sound, new SoundFragment(), R.drawable.ic_music));
+        }
+        sFragments.add(new NavigationActivity.NavigationFragment(R.string.battery, new BatteryFragment(), R.drawable.ic_battery));
+        if (LED.supported()) {
+            sFragments.add(new NavigationActivity.NavigationFragment(R.string.led, new LEDFragment(), R.drawable.ic_led));
+        }
+        if (IO.supported()) {
+            sFragments.add(new NavigationActivity.NavigationFragment(R.string.io_scheduler, new IOFragment(), R.drawable.ic_sdcard));
+        }
+        if (KSM.supported()) {
+            sFragments.add(new NavigationActivity.NavigationFragment(R.string.ksm, new KSMFragment(), R.drawable.ic_merge));
+        }
+        if (LMK.supported()) {
+            sFragments.add(new NavigationActivity.NavigationFragment(R.string.lmk, new LMKFragment(), R.drawable.ic_stackoverflow));
+        }
+        sFragments.add(new NavigationActivity.NavigationFragment(R.string.virtual_memory, new VMFragment(), R.drawable.ic_server));
+        if (Entropy.supported()) {
+            sFragments.add(new NavigationActivity.NavigationFragment(R.string.entropy, new EntropyFragment(), R.drawable.ic_numbers));
+        }
+        sFragments.add(new NavigationActivity.NavigationFragment(R.string.misc, new MiscFragment(), R.drawable.ic_clear));
+        sFragments.add(new NavigationActivity.NavigationFragment(R.string.tools));
+        sFragments.add(new NavigationActivity.NavigationFragment(R.string.data_sharing, new DataSharingFragment(), R.drawable.ic_database));
+        sFragments.add(new NavigationActivity.NavigationFragment(R.string.custom_controls, new CustomControlsFragment(), R.drawable.ic_console));
 
+        SupportedDownloads supportedDownloads = new SupportedDownloads(this);
+        if (supportedDownloads.getLink() != null) {
+            sFragments.add(new NavigationActivity.NavigationFragment(R.string.downloads, DownloadsFragment.newInstance(supportedDownloads), R.drawable.ic_download));
+        }
+        if (Backup.hasBackup()) {
+            sFragments.add(new NavigationActivity.NavigationFragment(R.string.backup, new BackupFragment(), R.drawable.ic_restore));
+        }
+        sFragments.add(new NavigationActivity.NavigationFragment(R.string.build_prop_editor, new BuildpropFragment(), R.drawable.ic_edit));
+        sFragments.add(new NavigationActivity.NavigationFragment(R.string.profile, new ProfileFragment(), R.drawable.ic_layers));
+        sFragments.add(new NavigationActivity.NavigationFragment(R.string.recovery, new RecoveryFragment(), R.drawable.ic_security));
+        sFragments.add(new NavigationActivity.NavigationFragment(R.string.initd, new InitdFragment(), R.drawable.ic_shell));
+        sFragments.add(new NavigationActivity.NavigationFragment(R.string.on_boot, new OnBootFragment(), R.drawable.ic_start));
+        sFragments.add(new NavigationActivity.NavigationFragment(R.string.other));
+        sFragments.add(new NavigationActivity.NavigationFragment(R.string.settings));
+        sFragments.add(new NavigationActivity.NavigationFragment(R.string.about, new AboutFragment(), R.drawable.ic_about));
+        sFragments.add(new NavigationActivity.NavigationFragment(R.string.contributors, new ContributorsFragment(), R.drawable.ic_people));
+        sFragments.add(new NavigationActivity.NavigationFragment(R.string.help, new HelpFragment(), R.drawable.ic_help));
+    }
+
+    private void init(Bundle savedInstanceState) {
         int result = Prefs.getInt("license", -1, this);
         int intentResult = getIntent().getIntExtra("result", -1);
 
-        if ((result == intentResult && result == 2) && mLicenseDialog) {
+        if ((result == intentResult && (result == 1 || result == 2)) && mLicenseDialog) {
             ViewUtils.dialogBuilder(getString(R.string.license_invalid), null,
                     new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
-
                         }
                     }, new DialogInterface.OnDismissListener() {
                         @Override
@@ -282,32 +275,60 @@ public class NavigationActivity extends BaseActivity
             }
         }
 
-        String id;
-        if ((id = Prefs.getString("android_id", "", this)).isEmpty()) {
-            Prefs.saveString("android_id", id = Settings.Secure.getString(getContentResolver(),
-                    Settings.Secure.ANDROID_ID), this);
-        }
-        final String androidId = id;
-        if (Utils.DONATED && mPatchingThread == null) {
-            mPatchingThread = new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        if (Utils.isPatched(getPackageManager().getApplicationInfo(
-                                "com.grarak.kerneladiutordonate", 0))) {
-                            Utils.DONATED = false;
-                            if (!BuildConfig.DEBUG) {
-                                Answers.getInstance().logCustom(new CustomEvent("Pirated")
-                                        .putCustomAttribute("android_id", androidId));
-                            }
-                        }
-                    } catch (PackageManager.NameNotFoundException ignored) {
-                    }
-                    mPatchingThread = null;
+        sCallback = new Callback() {
+            @Override
+            public void onBannerResize() {
+                Fragment fragment = sActualFragments.get(mSelection);
+                if (fragment instanceof RecyclerViewFragment) {
+                    ((RecyclerViewFragment) fragment).resizeBanner();
                 }
-            });
-            mPatchingThread.start();
+            }
+        };
+        setContentView(R.layout.activity_navigation);
+        Toolbar toolbar = getToolBar();
+        setSupportActionBar(toolbar);
+
+        mDrawer = (DrawerLayout) findViewById(R.id.drawer_layout);
+        ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(this, mDrawer, toolbar, 0, 0);
+        mDrawer.addDrawerListener(toggle);
+        toggle.syncState();
+
+        mNavigationView = (NavigationView) findViewById(R.id.nav_view);
+        mNavigationView.setNavigationItemSelectedListener(this);
+        mNavigationView.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+            @Override
+            public void onFocusChange(View v, boolean hasFocus) {
+                if (hasFocus) {
+                    v.clearFocus();
+                }
+            }
+        });
+        appendFragments(false);
+
+        if (savedInstanceState != null) {
+            mSelection = savedInstanceState.getInt("selection");
+            mLicenseDialog = savedInstanceState.getBoolean("license");
+            mFetchingAds = savedInstanceState.getBoolean("fetching_ads");
         }
+
+        String section = getIntent().getStringExtra("section");
+        if (section != null) {
+            for (int id : sActualFragments.keySet()) {
+                if (sActualFragments.get(id) != null
+                        && sActualFragments.get(id).getClass().getCanonicalName().equals(section)) {
+                    mSelection = id;
+                    break;
+                }
+            }
+            getIntent().removeExtra("section");
+        }
+
+        if (mSelection == 0 || !sActualFragments.containsKey(mSelection)) {
+            mSelection = firstTab();
+        }
+        onItemSelected(mSelection, false, false);
+
+        startService(new Intent(this, Monitor.class));
 
         if (!mFetchingAds && !Utils.DONATED) {
             mFetchingAds = true;
@@ -341,27 +362,104 @@ public class NavigationActivity extends BaseActivity
     }
 
     public void appendFragments() {
+        appendFragments(true);
+    }
+
+    private void appendFragments(boolean setShortcuts) {
         sActualFragments.clear();
         Menu menu = mNavigationView.getMenu();
         menu.clear();
 
         SubMenu lastSubMenu = null;
-        for (int id : sFragments.keySet()) {
-            if (sFragments.get(id) == null) {
+        for (NavigationFragment navigationFragment : sFragments) {
+            Fragment fragment = navigationFragment.mFragment;
+            int id = navigationFragment.mId;
+
+            Drawable drawable = ContextCompat.getDrawable(this,
+                    Utils.DONATED
+                            && Prefs.getBoolean("section_icons", false, this)
+                            && navigationFragment.mDrawable != 0 ? navigationFragment.mDrawable :
+                            R.drawable.ic_blank);
+
+            if (fragment == null) {
                 lastSubMenu = menu.addSubMenu(id);
                 sActualFragments.put(id, null);
-            } else if (Prefs.getBoolean(sFragments.get(id).getClass().getSimpleName() + "_enabled",
+            } else if (Prefs.getBoolean(fragment.getClass().getSimpleName() + "_enabled",
                     true, this)) {
                 MenuItem menuItem = lastSubMenu == null ? menu.add(0, id, 0, id) :
                         lastSubMenu.add(0, id, 0, id);
-                menuItem.setIcon(ContextCompat.getDrawable(this, R.drawable.ic_blank));
+                menuItem.setIcon(drawable);
                 menuItem.setCheckable(true);
                 if (mSelection != 0) {
                     mNavigationView.setCheckedItem(mSelection);
                 }
-                sActualFragments.put(id, sFragments.get(id));
+                sActualFragments.put(id, fragment);
             }
         }
+        if (setShortcuts) {
+            setShortcuts();
+        }
+    }
+
+    private NavigationFragment getNavigationFragment(Fragment fragment) {
+        for (NavigationFragment navigationFragment : sFragments) {
+            if (fragment == navigationFragment.mFragment) {
+                return navigationFragment;
+            }
+        }
+        return null;
+    }
+
+    private void setShortcuts() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N_MR1) return;
+        HashMap<Fragment, Integer> openendFragmentsCount = new HashMap<>();
+
+        for (int id : sActualFragments.keySet()) {
+            Fragment fragment = sActualFragments.get(id);
+            if (fragment == null || fragment.getClass() == SettingsFragment.class) continue;
+
+            int opened = Prefs.getInt(fragment.getClass().getSimpleName() + "_opened", 0, this);
+            openendFragmentsCount.put(fragment, opened);
+        }
+
+        int max = 0;
+        for (Map.Entry<Fragment, Integer> map : openendFragmentsCount.entrySet()) {
+            if (max < map.getValue()) {
+                max = map.getValue();
+            }
+        }
+
+        int count = 0;
+        List<ShortcutInfo> shortcutInfos = new ArrayList<>();
+        ShortcutManager shortcutManager = getSystemService(ShortcutManager.class);
+        shortcutManager.removeAllDynamicShortcuts();
+        for (int i = max; i >= 0; i--) {
+            for (Map.Entry<Fragment, Integer> map : openendFragmentsCount.entrySet()) {
+                if (i == map.getValue()) {
+                    NavigationFragment navFragment = getNavigationFragment(map.getKey());
+                    if (navFragment == null) continue;
+
+                    if (count == 4) break;
+                    count++;
+
+                    Intent intent = new Intent(this, MainActivity.class);
+                    intent.setAction(Intent.ACTION_VIEW);
+                    intent.putExtra("section", navFragment.mFragment.getClass().getCanonicalName());
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+
+                    ShortcutInfo shortcut = new ShortcutInfo.Builder(this,
+                            navFragment.mFragment.getClass().getSimpleName())
+                            .setShortLabel(getString(navFragment.mId))
+                            .setLongLabel(Utils.strFormat(getString(R.string.open), getString(navFragment.mId)))
+                            .setIcon(Icon.createWithResource(this, navFragment.mDrawable == 0 ?
+                                    R.drawable.ic_blank : navFragment.mDrawable))
+                            .setIntent(intent)
+                            .build();
+                    shortcutInfos.add(shortcut);
+                }
+            }
+        }
+        shortcutManager.setDynamicShortcuts(shortcutInfos);
     }
 
     @Override
@@ -401,13 +499,10 @@ public class NavigationActivity extends BaseActivity
             }
         }
         fragmentTransaction.commitAllowingStateLoss();
-        RootUtils.closeSU();
         if (mAdsFetcher != null) {
             mAdsFetcher.cancel();
         }
-        if (mPatchingThread != null) {
-            mPatchingThread.interrupt();
-        }
+        RootUtils.closeSU();
     }
 
     @Override
@@ -419,12 +514,12 @@ public class NavigationActivity extends BaseActivity
     }
 
     @Override
-    public boolean onNavigationItemSelected(MenuItem item) {
-        onItemSelected(item.getItemId(), true);
+    public boolean onNavigationItemSelected(@NonNull MenuItem item) {
+        onItemSelected(item.getItemId(), true, true);
         return true;
     }
 
-    private void onItemSelected(final int res, boolean delay) {
+    private void onItemSelected(final int res, boolean delay, boolean saveOpened) {
         mDrawer.closeDrawer(GravityCompat.START);
         getSupportActionBar().setTitle(getString(res));
         mNavigationView.setCheckedItem(res);
@@ -437,6 +532,12 @@ public class NavigationActivity extends BaseActivity
         }
         getSupportFragmentManager().beginTransaction().replace(R.id.content_frame, fragment,
                 res + "_key").commit();
+
+        if (saveOpened) {
+            String openedName = fragment.getClass().getSimpleName() + "_opened";
+            Prefs.saveInt(openedName, Prefs.getInt(openedName, 0, this) + 1, this);
+        }
+        setShortcuts();
     }
 
     private Fragment getFragment(int res) {
@@ -450,6 +551,28 @@ public class NavigationActivity extends BaseActivity
     public static void bannerResize() {
         if (sCallback != null) {
             sCallback.onBannerResize();
+        }
+    }
+
+    public static class NavigationFragment {
+
+        public int mId;
+        public Fragment mFragment;
+        private int mDrawable;
+
+        NavigationFragment(int id) {
+            this(id, null, 0);
+        }
+
+        NavigationFragment(int id, Fragment fragment, int drawable) {
+            mId = id;
+            mFragment = fragment;
+            mDrawable = drawable;
+        }
+
+        @Override
+        public String toString() {
+            return String.valueOf(mId);
         }
     }
 
