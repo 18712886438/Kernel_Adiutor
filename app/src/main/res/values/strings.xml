@@ -873,4 +873,6 @@
     <string name="adreno_boost">AdrenoBoost</string>
     <string name="boostLevel">BoostLevel</string>
     <string name="boost_summary">a driver to control boostlevel of your andreno gpu to improve the gaming experience. 0 off, 1 smooth,battery,friendly, 2 stronger, 3 aggressive</string>
+    <string name="ctmode">EyeProtectMode</string>
+    <string name="ctmode_sumary">Switch to change color tempreture of screen</string>
 </resources>

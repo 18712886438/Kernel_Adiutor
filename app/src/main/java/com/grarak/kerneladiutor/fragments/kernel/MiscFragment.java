@@ -68,6 +68,9 @@ public class MiscFragment extends RecyclerViewFragment {
         if (Misc.hasGentleFairSleepers()) {
             gentlefairsleepersInit(items);
         }
+        if (Misc.hasCtMode()){
+            ctmodeInit(items);
+        }
         if (Misc.hasArchPower()) {
             archPowerInit(items);
         }
@@ -138,6 +141,21 @@ public class MiscFragment extends RecyclerViewFragment {
         });
 
         items.add(crc);
+    }
+
+    private void ctmodeInit(List<RecyclerViewItem> items){
+        SwitchView ctmode = new SwitchView();
+        ctmode.setTitle(getString(R.string.ctmode));
+        ctmode.setSummary(getString(R.string.ctmode_sumary));
+        ctmode.setChecked(Misc.isCtModeEnabled());
+        ctmode.addOnSwitchListener(new SwitchView.OnSwitchListener(){
+            @Override
+            public void onChanged(SwitchView switchView, boolean isChecked){
+                Misc.enableCtMode(isChecked, getActivity());
+            }
+        });
+
+        items.add(ctmode);
     }
 
     private void fsyncInit(List<RecyclerViewItem> items) {

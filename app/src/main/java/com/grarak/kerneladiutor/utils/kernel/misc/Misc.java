@@ -44,6 +44,7 @@ public class Misc {
     private static final List<String> sLoggers = new ArrayList<>();
     private static final List<String> sCrcs = new ArrayList<>();
     private static final List<String> sFsyncs = new ArrayList<>();
+    private static final List<String> sCtMode = new ArrayList<>();
 
     static {
         sLoggers.add("/sys/kernel/logger_mode/logger_mode");
@@ -55,11 +56,15 @@ public class Misc {
 
         sFsyncs.add("/sys/devices/virtual/misc/fsynccontrol/fsync_enabled");
         sFsyncs.add("/sys/module/sync/parameters/fsync_enabled");
+
+        sCtMode.add("sys/devices/virtual/graphics/fb0/ct_onoff");
+        sCtMode.add("sys/devices/virtual/graphics/fb1/ct_onoff");
     }
 
     private static String LOGGER_FILE;
     private static String CRC_FILE;
     private static String FSYNC_FILE;
+    private static String CTMODE_FILE;
     private static Boolean FSYNC_USE_INTEGER;
 
     public static void setHostname(String value, Context context) {
@@ -160,6 +165,26 @@ public class Misc {
         return CRC_FILE != null;
     }
 
+    public static void enableCtMode(boolean enable, Context context) {
+        run(Control.write(enable ? "1" : "0", CTMODE_FILE), CTMODE_FILE, context);
+    }
+
+    public static boolean isCtModeEnabled() {
+        return Utils.readFile(CTMODE_FILE).equals("1");
+    }
+
+    public static boolean hasCtMode() {
+        if (CTMODE_FILE == null) {
+            for (String file : sCtMode) {
+                if (Utils.existFile(file)) {
+                    CTMODE_FILE = file;
+                    return true;
+                }
+            }
+        }
+        return CTMODE_FILE != null;
+    }
+
     public static void enableLogger(boolean enable, Context context) {
         run(Control.write(enable ? "1" : "0", LOGGER_FILE), LOGGER_FILE, context);
     }
@@ -183,5 +208,6 @@ public class Misc {
     private static void run(String command, String id, Context context) {
         Control.runSetting(command, ApplyOnBootFragment.MISC, id, context);
     }
+
 
 }

@@ -819,4 +819,6 @@
   <string name="adreno_boost">Adreno加速器</string>
   <string name="boostLevel">加速档位</string>
   <string name="boost_summary">滑动下方按钮来控制加速Adreno GPU的档位 0 是关闭, 1 档适用于日常使用, 2 档略激进, 3 档更加激进，请酌情使用</string>
+  <string name="ctmode">护眼模式</string>
+  <string name="ctmode_sumary">切换开关以改变屏幕色温</string>
 </resources>
